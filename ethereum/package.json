@@ -7,7 +7,8 @@
   "scripts": {
     "build": "hardhat compile",
     "test": "hardhat test",
-    "node": "hardhat node"
+    "node": "hardhat node",
+    "deposit": "tsx scripts/deposit.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.7",

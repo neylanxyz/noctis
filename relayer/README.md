@@ -5,8 +5,9 @@ Node/TS service bridging Ethereum `Locked` events to Midnight `mint` calls, and 
 
 ## Status
 
-- `src/ethereumWatcher.ts` - watches `NoctisLock.Locked` events. Implemented, reads the
-  ABI straight from the Hardhat build artifact.
+- `src/ethereumWatcher.ts` - watches `NoctisLock.Locked` events over a WebSocket
+  subscription (not a plain `JsonRpcProvider`, see gotchas below). Reads the ABI
+  straight from the Hardhat build artifact.
 - `src/ethereumUnlocker.ts` - signs and submits `NoctisLock.unlock()`. Unit-tested and
   **verified live**: driven by a real burn, its `unlock()` tx succeeded on-chain and
   moved exactly the burned amount from `NoctisLock` to the recipient.
@@ -49,3 +50,12 @@ the same key the contract was deployed with, or `mint()` fails its relayer-ident
   value, not a caller-supplied number), not from any out-of-band message - so a
   malicious client can't trick the relayer into releasing more/less than was actually
   burned, or to the wrong address.
+- **`contract.on()` over a plain `JsonRpcProvider` silently stops working.** ethers v6
+  defaults to filter-based polling (`eth_newFilter` + `eth_getFilterChanges`) for a
+  `JsonRpcProvider`, and that filter can be dropped by the node after enough
+  time/inactivity - confirmed live, it broke a relayer that had been running for ~25
+  minutes with `TypeError: results is not iterable`, after which it silently stopped
+  picking up new deposits (the process didn't crash, so nothing *looked* wrong).
+  Switched to `ethers.WebSocketProvider` (push-based `eth_subscribe`), which doesn't
+  have this failure mode - confirmed by leaving the relayer running and successfully
+  picking up a deposit made well after the fix.

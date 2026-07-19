@@ -24,7 +24,13 @@ export interface LockedEvent {
 }
 
 export function watchLockedEvents(onLocked: (event: LockedEvent) => Promise<void>) {
-  const provider = new ethers.JsonRpcProvider(config.ethereum.rpcUrl);
+  // WebSocketProvider (push-based eth_subscribe), not JsonRpcProvider: contract.on()
+  // over plain HTTP polls via eth_newFilter/eth_getFilterChanges, and that filter can
+  // be dropped by the node after enough time/inactivity - confirmed live, it broke a
+  // long-running relayer with "TypeError: results is not iterable" and silently
+  // stopped picking up new deposits. WS subscriptions don't have this failure mode.
+  const wsUrl = config.ethereum.rpcUrl.replace(/^http/, 'ws');
+  const provider = new ethers.WebSocketProvider(wsUrl);
   const contract = new ethers.Contract(config.ethereum.noctisLockAddress, noctisLockAbi, provider);
 
   contract.on(
