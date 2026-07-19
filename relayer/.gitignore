@@ -1,0 +1,14 @@
+/node_modules
+/dist
+.env
+.env.*
+!.env.example
+
+# LevelDB private-state cache created at runtime by levelPrivateStateProvider
+midnight-level-db/
+
+# Relayer's own copies of midnight/'s network/wallet state (shares the same seed/key
+# files when run with cwd pointed at midnight/, but keep these ignored defensively)
+.midnight-state.json
+.midnight-wallet-state/
+.noctis-relayer-key

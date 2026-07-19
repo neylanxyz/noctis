@@ -1,0 +1,18 @@
+/managed
+/node_modules
+/dist
+.env
+.env.*
+!.env.example
+
+# Midnight network/wallet state (per-network seeds, deploy addresses - sensitive)
+.midnight-state.json
+.midnight-wallet-state/
+
+# Relayer secret key (sensitive - authorizes mint())
+.noctis-relayer-key
+
+*-state/
+
+# LevelDB private-state cache created at runtime by levelPrivateStateProvider
+midnight-level-db/

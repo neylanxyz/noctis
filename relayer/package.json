@@ -1,0 +1,35 @@
+{
+  "name": "noctis-relayer",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Noctis: relayer bridging Locked events on Ethereum to mint/burn circuits on Midnight",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json || true",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "ethers": "^6.14.0",
+    "dotenv": "^16.4.5",
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "4.1.1",
+    "@midnight-ntwrk/wallet-sdk": "1.2.0",
+    "rxjs": "^7.8.2",
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.3",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.8.5",
+    "@types/ws": "^8.18.1"
+  }
+}

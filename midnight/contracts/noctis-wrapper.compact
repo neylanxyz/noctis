@@ -1,0 +1,90 @@
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// Commitment to the relayer's secret key (persistentHash(domainSep, secretKey)).
+// Only whoever holds the matching secret key can produce a valid proof for mint().
+// MVP trust assumption: a single relayer key, rotated by redeploy. See README for
+// the multisig upgrade path.
+export ledger relayerPublicKey: Bytes<32>;
+
+// Deposit ids already minted, keyed by the Ethereum-side depositId (keccak256 of
+// depositor/amount/recipient/nonce from the NoctisLock.Locked event). Prevents the
+// relayer from minting the same deposit twice.
+export ledger processedDeposits: Map<Bytes<32>, Boolean>;
+
+// A burn's public redemption data: how much to release and to which Ethereum address.
+// Made public deliberately - once redeeming back to transparent Ethereum, there's no
+// remaining privacy benefit to hiding the amount, and putting it on-chain (rather than
+// trusting an out-of-band message to the relayer) means the relayer only ever acts on
+// canonical contract state instead of an arbitrary unauthenticated claim.
+struct BurnRecord {
+  amount: Uint<128>;
+  ethRecipient: Bytes<20>;
+}
+
+// Redemptions recorded so far, keyed by a caller-chosen redemptionId. The relayer
+// watches this map to know which burns still need an Ethereum-side unlock().
+export ledger processedBurns: Map<Bytes<32>, BurnRecord>;
+
+constructor(initialRelayerPublicKey: Bytes<32>) {
+  relayerPublicKey = disclose(initialRelayerPublicKey);
+}
+
+// Witness: the relayer's secret key, supplied locally by the relayer's own driver code
+// and never revealed on-chain - only a proof of knowledge of it is submitted.
+witness relayerSecretKey(): Bytes<32>;
+
+// Mints a shielded wrapped-ETH coin for a deposit locked in NoctisLock on Ethereum.
+// Callable only by whoever holds relayerSecretKey (the relayer service).
+export circuit mint(
+  depositId: Bytes<32>,
+  amount: Uint<64>,
+  nonce: Bytes<32>,
+  recipient: ZswapCoinPublicKey
+): [] {
+  assert(
+    derivePublicKey(relayerSecretKey()) == relayerPublicKey,
+    "caller is not the relayer"
+  );
+  assert(!processedDeposits.member(disclose(depositId)), "deposit already minted");
+  processedDeposits.insert(disclose(depositId), true);
+
+  // mintShieldedToken already delivers the coin to `recipient` - no separate send
+  // needed (an earlier version called sendImmediateShielded here too, which failed
+  // with "attempted to spend a user-owned output as contract owned": that circuit is
+  // for the contract re-sending a coin it currently holds, e.g. via receiveShielded,
+  // not for a coin that was just minted straight to a user).
+  mintShieldedToken(
+    disclose(pad(32, "noctis:wrapped-eth")),
+    disclose(amount),
+    disclose(nonce),
+    disclose(left<ZswapCoinPublicKey, ContractAddress>(recipient))
+  );
+}
+
+// Burns a previously minted wrapped-ETH coin by permanently taking custody of it in
+// this contract (no circuit ever spends it back out), and records the redemption
+// (amount taken from the coin itself, so it can't be misreported) for the relayer to
+// relay to NoctisLock.unlock() on Ethereum.
+export circuit burn(
+  coin: ShieldedCoinInfo,
+  redemptionId: Bytes<32>,
+  ethRecipient: Bytes<20>
+): [] {
+  assert(!processedBurns.member(disclose(redemptionId)), "redemption already recorded");
+  const amount = coin.value;
+  receiveShielded(disclose(coin));
+  processedBurns.insert(
+    disclose(redemptionId),
+    disclose(BurnRecord { amount: amount, ethRecipient: ethRecipient })
+  );
+}
+
+// Exported + pure so the relayer's own driver code can call this directly
+// (via the generated `pureCircuits.derivePublicKey`) to compute its public-key
+// commitment off-chain from a chosen secret key - e.g. to pass as the
+// constructor argument at deploy time, without needing a transaction.
+export pure circuit derivePublicKey(secretKey: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "noctis:relayer:"), secretKey]);
+}

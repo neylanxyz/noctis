@@ -1,0 +1,11 @@
+{
+  "name": "noctis",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Noctis: privacy bridge between Ethereum and Midnight",
+  "workspaces": [
+    "ethereum",
+    "midnight",
+    "relayer"
+  ]
+}
